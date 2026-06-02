@@ -210,17 +210,49 @@ window.App = (function () {
       [s.occurrences, "Occurrences"],
       [s.species, "Species"],
       [s.nurseries, "Nursery records"],
-      [s.seedlings.toLocaleString(), "Planting materials"],
-      [treesPlanted.toLocaleString(), "Trees planted"],
-      [Math.round(hectares).toLocaleString(), "Hectares planted"],
+      [s.seedlings, "Planting materials"],
+      [treesPlanted, "Trees planted"],
+      [Math.round(hectares), "Hectares planted"],
     ];
     $("#statsBand").innerHTML =
       `<div class="stats-band-card">
         <div class="stats-band-eyebrow">The database at a glance</div>
         <div class="stats-band-grid">
-          ${items.map(([n, l]) => `<div class="stat"><span class="num">${n}</span><span class="lbl">${l}</span></div>`).join("")}
+          ${items.map(([n, l]) => `<div class="stat"><span class="num" data-target="${n}">0</span><span class="lbl">${l}</span></div>`).join("")}
         </div>
       </div>`;
+
+    // Count-up animation when the band scrolls into view (once).
+    const band = $("#statsBand");
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      $$(".num", band).forEach((el) => (el.textContent = (+el.dataset.target).toLocaleString()));
+      return;
+    }
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries, obs) => entries.forEach((e) => { if (e.isIntersecting) { animateStatNumbers(); obs.disconnect(); } }),
+        { threshold: 0.35 }
+      );
+      io.observe(band);
+    } else {
+      animateStatNumbers();
+    }
+  }
+
+  function animateStatNumbers() {
+    const dur = 1300;
+    $$("#statsBand .num").forEach((el) => {
+      const target = +el.dataset.target || 0;
+      const start = performance.now();
+      (function tick(now) {
+        const p = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+        el.textContent = Math.round(target * eased).toLocaleString();
+        if (p < 1) requestAnimationFrame(tick);
+        else el.textContent = target.toLocaleString();
+      })(start);
+    });
   }
 
   /* ---- Map pane ---- */
